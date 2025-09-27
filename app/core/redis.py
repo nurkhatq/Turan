@@ -1,5 +1,5 @@
 # app/core/redis.py
-import aioredis
+import redis.asyncio as redis
 import json
 import pickle
 from typing import Any, Optional, Union
@@ -16,12 +16,12 @@ class RedisManager:
     """Redis connection and utility manager."""
     
     def __init__(self):
-        self.redis: Optional[aioredis.Redis] = None
+        self.redis: Optional[redis.Redis] = None
     
     async def connect(self):
         """Connect to Redis."""
         try:
-            self.redis = aioredis.from_url(
+            self.redis = redis.from_url(
                 settings.REDIS_URL,
                 encoding="utf-8",
                 decode_responses=False

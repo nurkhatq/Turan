@@ -1,0 +1,1 @@
+"""MoySklad integration package."""

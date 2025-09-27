@@ -27,9 +27,7 @@ class AuthService:
     
     async def authenticate_user(self, email: str, password: str) -> Optional[User]:
         """Authenticate user by email and password."""
-        stmt = select(User).options(
-            selectinload(User.roles)
-        ).where(
+        stmt = select(User).where(
             User.email == email,
             User.is_deleted == False
         )
@@ -145,9 +143,7 @@ class AuthService:
     
     async def get_user_by_email(self, email: str) -> Optional[User]:
         """Get user by email."""
-        stmt = select(User).options(
-            selectinload(User.roles)
-        ).where(
+        stmt = select(User).where(
             User.email == email,
             User.is_deleted == False
         )

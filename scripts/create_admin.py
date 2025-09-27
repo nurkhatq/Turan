@@ -10,47 +10,32 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent))
 
 from app.core.database import get_db_context
-from app.models.user import User, Role
 from app.core.security import create_password_hash
-import json
+from sqlalchemy import text
 
 async def create_admin_user():
-    """Create initial admin user and roles."""
+    """Create initial admin user using raw SQL."""
     async with get_db_context() as db:
-        # Create admin role
-        admin_role = Role(
-            name="Администратор",
-            description="Полный доступ к системе",
-            permissions=json.dumps([
-                "admin.access",
-                "users.manage",
-                "products.read",
-                "products.write",
-                "sales.read",
-                "analytics.read",
-                "integrations.manage"
-            ]),
-            is_system_role=True
-        )
-        db.add(admin_role)
-        await db.flush()
+        # Check if admin already exists
+        result = await db.execute(text("SELECT id FROM users WHERE email = 'admin@example.com'"))
+        existing_user = result.fetchone()
         
-        # Create admin user
-        admin_user = User(
-            email="admin@example.com",
-            full_name="Системный администратор",
-            hashed_password=create_password_hash("admin123"),
-            is_superuser=True,
-            is_active=True
-        )
-        admin_user.roles.append(admin_role)
+        if existing_user:
+            print("⚠️  Admin user already exists")
+            return
         
-        db.add(admin_user)
+        # Create admin user using raw SQL
+        hashed_password = create_password_hash("admin123")
+        await db.execute(text("""
+            INSERT INTO users (email, hashed_password, full_name, is_active, is_superuser, created_at, updated_at, is_deleted)
+            VALUES ('admin@example.com', :password, 'System Administrator', true, true, NOW(), NOW(), false)
+        """), {"password": hashed_password})
+        
         await db.commit()
         
         print("✅ Admin user created:")
-        print(f"   Email: {admin_user.email}")
-        print(f"   Password: admin123")
+        print("   Email: admin@example.com")
+        print("   Password: admin123")
         print("   🚨 Please change the password after first login!")
 
 async def main():

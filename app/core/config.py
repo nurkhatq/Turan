@@ -1,6 +1,7 @@
 # app/core/config.py
-from typing import Optional, List
-from pydantic import BaseSettings, validator
+from typing import Optional, List, Union
+from pydantic import field_validator
+from pydantic_settings import BaseSettings
 import secrets
 
 
@@ -37,9 +38,9 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
     
-    # CORS
-    ALLOWED_HOSTS: List[str] = ["*"]
-    CORS_ORIGINS: List[str] = ["*"]
+    # CORS - Fixed for Pydantic v2
+    ALLOWED_HOSTS: Union[str, List[str]] = ["*"]
+    CORS_ORIGINS: Union[str, List[str]] = ["*"]
     
     # MoySklad Integration
     MOYSKLAD_BASE_URL: str = "https://api.moysklad.ru/api/remap/1.2"
@@ -65,7 +66,28 @@ class Settings(BaseSettings):
     SMTP_PORT: int = 587
     SMTP_USER: Optional[str] = None
     SMTP_PASSWORD: Optional[str] = None
-    
-    class Config:
-        env_file = ".env"
-        case_sensitive = True
+
+    @field_validator('ALLOWED_HOSTS', 'CORS_ORIGINS', mode='before')
+    @classmethod
+    def parse_list_fields(cls, v):
+        """Parse comma-separated strings or JSON arrays into lists."""
+        if v is None or v == "":
+            return ["*"]
+        
+        if isinstance(v, str):
+            if v.strip() == "*":
+                return ["*"]
+            # Try to parse as JSON first
+            try:
+                import json
+                return json.loads(v)
+            except (json.JSONDecodeError, ValueError):
+                # If not JSON, split by comma
+                return [item.strip() for item in v.split(',') if item.strip()]
+        return v
+
+    model_config = {
+        "env_file": ".env",
+        "case_sensitive": True,
+        "extra": "ignore"  # Ignore extra environment variables
+    }

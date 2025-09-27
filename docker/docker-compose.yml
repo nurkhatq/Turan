@@ -87,7 +87,7 @@ services:
     build:
       context: ..
       dockerfile: docker/Dockerfile
-    command: celery -A app.core.celery_app beat --loglevel=info
+    command: celery -A app.core.celery_app beat --loglevel=info --schedule=/tmp/celerybeat-schedule
     environment:
       - DATABASE_URL=postgresql+asyncpg://crm_user:crm_password@postgres:5432/crm_db
       - REDIS_URL=redis://redis:6379/0
@@ -101,7 +101,6 @@ services:
         condition: service_healthy
     volumes:
       - ../app:/app/app
-      - celery_beat_data:/app/celerybeat-schedule
     networks:
       - crm_network
     restart: unless-stopped
@@ -163,8 +162,11 @@ services:
       dockerfile: docker/Dockerfile
     command: celery -A app.core.celery_app flower --port=5555
     environment:
+      - DATABASE_URL=postgresql+asyncpg://crm_user:crm_password@postgres:5432/crm_db
+      - REDIS_URL=redis://redis:6379/0
       - CELERY_BROKER_URL=redis://redis:6379/1
       - CELERY_RESULT_BACKEND=redis://redis:6379/2
+      - SECRET_KEY=your-secret-key-change-in-production
     ports:
       - "5555:5555"
     depends_on:
@@ -178,7 +180,6 @@ volumes:
   redis_data:
   prometheus_data:
   grafana_data:
-  celery_beat_data:
 
 networks:
   crm_network:

@@ -1,5 +1,4 @@
-# Makefile
-.PHONY: help install dev-install test lint format clean docker-build docker-up docker-down migrate init-db create-admin
+.PHONY: help install dev-install test lint format clean docker-build docker-up docker-down migrate init-db create-admin structure
 
 help: ## Show this help message
 	@echo 'Usage: make [target]'
@@ -10,28 +9,17 @@ help: ## Show this help message
 install: ## Install production dependencies
 	pip install -r requirements.txt
 
-dev-install: ## Install development dependencies
-	pip install -r requirements.txt -r requirements-dev.txt
-	pre-commit install
+migrate: ## Run database migrations (use this instead of scripts/migrate.py)
+	alembic upgrade head
 
-test: ## Run tests
-	pytest tests/ -v --cov=app --cov-report=html
-
-lint: ## Run linting
-	flake8 app/
-	mypy app/
-
-format: ## Format code
-	black app/
-	isort app/
-
-clean: ## Clean cache files
-	find . -type f -name "*.pyc" -delete
-	find . -type d -name "__pycache__" -delete
-	rm -rf .coverage htmlcov/ .pytest_cache/
+setup-db: ## Complete database setup
+	python scripts/setup_database.py
 
 docker-build: ## Build Docker images
 	docker-compose -f docker/docker-compose.yml build
+
+test: ## Run tests
+	pytest tests/ -v --cov=app --cov-report=html
 
 docker-up: ## Start development environment
 	docker-compose -f docker/docker-compose.yml up -d
@@ -39,21 +27,13 @@ docker-up: ## Start development environment
 docker-down: ## Stop development environment
 	docker-compose -f docker/docker-compose.yml down
 
-docker-prod-up: ## Start production environment
-	docker-compose -f docker/docker-compose.prod.yml up -d
-
 docker-logs: ## View Docker logs
 	docker-compose -f docker/docker-compose.yml logs -f
 
-migrate: ## Run database migrations
-	python scripts/migrate.py
+setup: structure docker-up setup-db ## Complete setup for development
 
-init-db: ## Initialize database
-	python scripts/init_db.py
-
-create-admin: ## Create admin user
-	python scripts/create_admin.py
-
-setup: docker-up migrate init-db create-admin ## Complete setup for development
-
-prod-setup: docker-prod-up migrate init-db create-admin ## Complete setup for production
+quick-fix: ## Quick fix for common issues
+	make docker-build
+	make docker-up
+	sleep 10
+	make setup-db

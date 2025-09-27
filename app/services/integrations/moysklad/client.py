@@ -31,8 +31,8 @@ class MoySkladClient:
         if self.token:
             self.headers = {
                 "Authorization": f"Bearer {self.token}",
-                "Content-Type": "application/json",
-                "Accept": "application/json"
+                "Content-Type": "application/json;charset=utf-8",
+                "Accept": "application/json;charset=utf-8"
             }
             logger.info("Using MoySklad token authentication")
         elif self.username and self.password:
@@ -41,8 +41,8 @@ class MoySkladClient:
             ).decode()
             self.headers = {
                 "Authorization": f"Basic {credentials}",
-                "Content-Type": "application/json",
-                "Accept": "application/json"
+                "Content-Type": "application/json;charset=utf-8",
+                "Accept": "application/json;charset=utf-8"
             }
             logger.info("Using MoySklad basic authentication")
         else:

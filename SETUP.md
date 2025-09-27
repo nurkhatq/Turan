@@ -112,3 +112,4 @@ All configuration is handled through environment variables. See `app/core/config
 2. **Redis Connection Issues**: Ensure Redis is running on the specified port
 3. **Import Errors**: Make sure all dependencies are installed and the Python path is correct
 4. **Pydantic Errors**: Ensure you're using Pydantic v2 compatible code
+

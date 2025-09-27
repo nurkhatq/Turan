@@ -1,4 +1,4 @@
-# app/api/v1/auth.py
+# app/api/v1/auth.py (FIXED VERSION)
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -28,22 +28,33 @@ async def login(
     redis: RedisManager = Depends(get_redis)
 ):
     """User login endpoint."""
-    auth_service = AuthService(db, redis)
-    
-    # Authenticate user
-    user = await auth_service.authenticate_user(
-        login_data.email,
-        login_data.password
-    )
-    
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect email or password"
+    try:
+        auth_service = AuthService(db, redis)
+        
+        # Authenticate user
+        user = await auth_service.authenticate_user(
+            login_data.email,
+            login_data.password
         )
-    
-    # Create tokens
-    return await auth_service.create_user_tokens(user)
+        
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Incorrect email or password"
+            )
+        
+        # Create tokens
+        return await auth_service.create_user_tokens(user)
+        
+    except HTTPException:
+        # Re-raise HTTP exceptions as-is
+        raise
+    except Exception as e:
+        # Handle any other exceptions
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Authentication failed: {str(e)}"
+        )
 
 
 @router.post("/refresh", response_model=TokenResponse)
@@ -53,14 +64,18 @@ async def refresh_token(
     redis: RedisManager = Depends(get_redis)
 ):
     """Refresh access token."""
-    auth_service = AuthService(db, redis)
-    
     try:
+        auth_service = AuthService(db, redis)
         return await auth_service.refresh_access_token(refresh_data.refresh_token)
     except AuthenticationError as e:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=str(e)
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Token refresh failed: {str(e)}"
         )
 
 
@@ -72,10 +87,16 @@ async def logout(
     redis: RedisManager = Depends(get_redis)
 ):
     """User logout endpoint."""
-    auth_service = AuthService(db, redis)
-    await auth_service.logout_user(current_user, credentials.credentials)
-    
-    return {"message": "Successfully logged out"}
+    try:
+        auth_service = AuthService(db, redis)
+        await auth_service.logout_user(current_user, credentials.credentials)
+        
+        return {"message": "Successfully logged out"}
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Logout failed: {str(e)}"
+        )
 
 
 @router.get("/me", response_model=UserResponse)
@@ -94,9 +115,9 @@ async def update_password(
     redis: RedisManager = Depends(get_redis)
 ):
     """Update current user password."""
-    auth_service = AuthService(db, redis)
-    
     try:
+        auth_service = AuthService(db, redis)
+        
         await auth_service.update_user_password(
             current_user,
             password_data.current_password,
@@ -107,4 +128,9 @@ async def update_password(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Password update failed: {str(e)}"
         )

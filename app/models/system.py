@@ -1,11 +1,7 @@
-# app/models/system.py
-from sqlalchemy import Column, String, Integer, DateTime, Text, Boolean, JSON
+# app/models/system.py (FIXED VERSION)
+from sqlalchemy import Column, String, Integer, DateTime, Text, Boolean, JSON, ForeignKey
 from datetime import datetime
-from ..models.user import *
-from ..models.moysklad.products import *
-from ..models.moysklad.counterparties import *
-from ..models.moysklad.inventory import *
-from ..models.moysklad.documents import *
+from sqlalchemy.orm import relationship
 from .base import BaseModel
 
 
@@ -62,7 +58,7 @@ class ApiLog(BaseModel):
     # Request info
     method = Column(String(10), nullable=False)
     endpoint = Column(String(500), nullable=False)
-    user_id = Column(Integer, ForeignKey("user.id"), nullable=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)  # FIXED: users not user
     ip_address = Column(String(45), nullable=True)
     user_agent = Column(Text, nullable=True)
     
@@ -94,10 +90,10 @@ class SystemAlert(BaseModel):
     is_read = Column(Boolean, default=False, nullable=False)
     is_resolved = Column(Boolean, default=False, nullable=False)
     resolved_at = Column(DateTime, nullable=True)
-    resolved_by_id = Column(Integer, ForeignKey("user.id"), nullable=True)
+    resolved_by_id = Column(Integer, ForeignKey("users.id"), nullable=True)  # FIXED: users not user
     
-    # Relationships
-    resolved_by = relationship("User")
+    # Relationships - REMOVED problematic relationship for now
+    # resolved_by = relationship("User")
 
 
 class Permission(BaseModel):

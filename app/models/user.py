@@ -1,32 +1,22 @@
-# app/models/user.py
-from sqlalchemy import Column, String, Boolean, Integer, ForeignKey, Text, Table
+# app/models/user.py (FIXED VERSION)
+from sqlalchemy import Column, String, Boolean, Integer, ForeignKey, Text, DateTime
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.hybrid import hybrid_property
+from datetime import datetime
 import json
 from .base import BaseModel
-
-# Association table for user roles (many-to-many) - commented out for now
-# user_roles = Table(
-#     'user_roles',
-#     BaseModel.metadata,
-#     Column('user_id', Integer, ForeignKey('user.id'), primary_key=True),
-#     Column('role_id', Integer, ForeignKey('role.id'), primary_key=True)
-# )
 
 
 class User(BaseModel):
     """User model with flexible role-based access."""
-    __tablename__ = "users"
+    __tablename__ = "users"  # CONSISTENT TABLE NAME
     
     email = Column(String(255), unique=True, index=True, nullable=False)
     hashed_password = Column(String(255), nullable=False)
     full_name = Column(String(255), nullable=False)
     is_active = Column(Boolean, default=True, nullable=False)
     is_superuser = Column(Boolean, default=False, nullable=False)
-    # last_login_at = Column(String(50), nullable=True)  # Column doesn't exist in DB yet
-    
-    # Relationships (simplified for now)
-    # roles = relationship("Role", secondary=user_roles, back_populates="users")
+    last_login_at = Column(DateTime, nullable=True)  # FIXED: Added proper type
     
     @hybrid_property
     def permissions(self):
@@ -52,9 +42,6 @@ class Role(BaseModel):
     permissions_data = Column(Text, nullable=True)  # JSON array of permissions
     is_system_role = Column(Boolean, default=False, nullable=False)  # System vs custom roles
     
-    # Relationships (simplified for now)
-    # users = relationship("User", secondary=user_roles, back_populates="roles")
-    
     @hybrid_property
     def permissions(self):
         """Get permissions as list."""
@@ -72,13 +59,12 @@ class UserSession(BaseModel):
     """User session tracking."""
     __tablename__ = "user_session"
     
-    user_id = Column(Integer, ForeignKey("user.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)  # FIXED: users not user
     session_token = Column(String(255), unique=True, nullable=False)
     refresh_token = Column(String(255), unique=True, nullable=True)
-    expires_at = Column(String(50), nullable=False)
+    expires_at = Column(DateTime, nullable=False)  # FIXED: Proper DateTime type
     user_agent = Column(Text, nullable=True)
     ip_address = Column(String(45), nullable=True)
     
-    # Relationships (simplified for now)
-    # user = relationship("User", backref="sessions")
-
+    # Relationships
+    user = relationship("User", backref="sessions")

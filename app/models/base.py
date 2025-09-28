@@ -1,4 +1,4 @@
-# app/models/base.py (SIMPLIFIED VERSION FOR INITIAL SETUP)
+# app/models/base.py (COMPLETE FIXED VERSION)
 from datetime import datetime
 from sqlalchemy import Column, Integer, DateTime, Boolean, String
 from sqlalchemy.ext.declarative import declarative_base
@@ -9,10 +9,6 @@ Base = declarative_base()
 class BaseModel(Base):
     """Base model with common fields for all tables."""
     __abstract__ = True
-    
-    @declared_attr
-    def __tablename__(cls):
-        return cls.__name__.lower()
     
     id = Column(Integer, primary_key=True, index=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
@@ -25,5 +21,3 @@ class ExternalIdMixin:
     
     external_id = Column(String(255), nullable=True, index=True)
     last_sync_at = Column(DateTime, nullable=True)
-
-# User model is defined in user.py

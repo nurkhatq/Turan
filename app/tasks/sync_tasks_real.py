@@ -42,16 +42,11 @@ def run_async_in_celery(coro):
 
 
 @celery_app.task(bind=True)
-def moysklad_full_sync(self):
+def moysklad_full_sync_real(self):
     """Real Celery task for full MoySklad synchronization with actual API calls."""
     task_id = self.request.id
     
     async def _sync():
-        # Import needed modules at function start
-        from app.models.system import IntegrationConfig
-        from sqlalchemy import select
-        from datetime import timedelta
-        
         async with get_db_context() as db:
             # Create sync job record
             sync_job = SyncJob(
@@ -81,17 +76,6 @@ def moysklad_full_sync(self):
                 sync_job.total_items = summary.get("total_created", 0) + summary.get("total_updated", 0)
                 sync_job.processed_items = sync_job.total_items
                 sync_job.failed_items = summary.get("total_errors", 0)
-                
-                # Update integration config status
-                stmt = select(IntegrationConfig).where(IntegrationConfig.service_name == "moysklad")
-                config_result = await db.execute(stmt)
-                config = config_result.scalar_one_or_none()
-                
-                if config:
-                    config.last_sync_at = datetime.utcnow()
-                    config.sync_status = "active"
-                    config.next_sync_at = datetime.utcnow() + timedelta(minutes=config.sync_interval_minutes)
-                    config.error_message = None
                 
                 await db.commit()
                 
@@ -126,16 +110,11 @@ def moysklad_full_sync(self):
 
 
 @celery_app.task(bind=True)
-def moysklad_incremental_sync(self):
+def moysklad_incremental_sync_real(self):
     """Real Celery task for incremental MoySklad synchronization with actual API calls."""
     task_id = self.request.id
     
     async def _sync():
-        # Import needed modules at function start
-        from app.models.system import IntegrationConfig
-        from sqlalchemy import select
-        from datetime import timedelta
-        
         async with get_db_context() as db:
             # Create sync job record
             sync_job = SyncJob(
@@ -181,17 +160,6 @@ def moysklad_incremental_sync(self):
                 sync_job.total_items = total_updated
                 sync_job.processed_items = total_updated
                 
-                # Update integration config status
-                stmt = select(IntegrationConfig).where(IntegrationConfig.service_name == "moysklad")
-                config_result = await db.execute(stmt)
-                config = config_result.scalar_one_or_none()
-                
-                if config:
-                    config.last_sync_at = datetime.utcnow()
-                    config.sync_status = "active"
-                    config.next_sync_at = datetime.utcnow() + timedelta(minutes=config.sync_interval_minutes)
-                    config.error_message = None
-                
                 await db.commit()
                 
                 logger.info(f"✅ Real incremental sync completed: {results}")
@@ -229,7 +197,7 @@ def moysklad_incremental_sync(self):
 
 
 @celery_app.task
-def test_moysklad_connection(credentials: dict):
+def test_moysklad_connection_real(credentials: dict):
     """Real MoySklad API connection test with actual API calls."""
     
     async def _test():

@@ -1,12 +1,8 @@
-# app/models/analytics.py
+# app/models/analytics.py (FIXED VERSION)
 from sqlalchemy import Column, String, Integer, Numeric, ForeignKey, DateTime, Text, JSON
 from sqlalchemy.orm import relationship
 from datetime import datetime
-from ..models.user import *
-from ..models.moysklad.products import *
-from ..models.moysklad.counterparties import *
-from ..models.moysklad.inventory import *
-from ..models.moysklad.documents import *
+
 from .base import BaseModel
 
 
@@ -37,10 +33,6 @@ class ProductAnalytics(BaseModel):
     # Foreign keys
     product_id = Column(Integer, ForeignKey("product.id"), nullable=True)
     variant_id = Column(Integer, ForeignKey("product_variant.id"), nullable=True)
-    
-    # Relationships
-    product = relationship("Product")
-    variant = relationship("ProductVariant")
 
 
 class CustomerAnalytics(BaseModel):
@@ -64,9 +56,6 @@ class CustomerAnalytics(BaseModel):
     
     # Foreign keys
     counterparty_id = Column(Integer, ForeignKey("counterparty.id"), nullable=False)
-    
-    # Relationships
-    counterparty = relationship("Counterparty")
 
 
 class SalesAnalytics(BaseModel):
@@ -90,4 +79,3 @@ class SalesAnalytics(BaseModel):
     
     # Additional metrics (stored as JSON)
     metrics_data = Column(JSON, nullable=True)
-

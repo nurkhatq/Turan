@@ -18,6 +18,12 @@ class User(BaseModel):
     is_superuser = Column(Boolean, default=False, nullable=False)
     last_login_at = Column(DateTime, nullable=True)  # FIXED: Added proper type
     
+    # Empty roles for now - can be extended later with many-to-many relationship
+    @property
+    def roles(self):
+        """Return empty list of roles for now."""
+        return []
+    
     @hybrid_property
     def permissions(self):
         """Get all permissions from all user roles."""

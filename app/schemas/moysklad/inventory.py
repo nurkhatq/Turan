@@ -1,11 +1,9 @@
-# app/schemas/moysklad/inventory.py
+# app/schemas/moysklad/inventory.py (FIXED VERSION)
 from typing import Optional
 from pydantic import BaseModel
 from decimal import Decimal
 from datetime import datetime
-from .products import ProductResponse, ProductVariantResponse, ServiceResponse
-from .inventory import StoreResponse
-from .counterparties import CounterpartyResponse
+
 
 class StoreResponse(BaseModel):
     """Store response schema."""
@@ -28,8 +26,6 @@ class StockResponse(BaseModel):
     in_transit: Decimal
     reserve: Decimal
     available: Decimal
-    product: Optional[ProductResponse]
-    variant: Optional[ProductVariantResponse]
     store: StoreResponse
     external_id: Optional[str]
     last_sync_at: Optional[datetime]

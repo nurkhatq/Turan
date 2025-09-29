@@ -15,7 +15,10 @@ from .moysklad.products import ProductFolder, UnitOfMeasure, Product, ProductVar
 from .moysklad.counterparties import Counterparty
 from .moysklad.inventory import Store, Stock
 from .moysklad.documents import SalesDocument, SalesDocumentPosition, PurchaseDocument, PurchaseDocumentPosition
-
+from .moysklad.organizations import (
+    Organization, Employee, Project, Contract,
+    Currency, PriceType, Country, EmployeeProject
+)
 # Import analytics models last (they depend on others)
 from .analytics import ProductAnalytics, CustomerAnalytics, SalesAnalytics
 
@@ -46,5 +49,13 @@ __all__ = [
     "PurchaseDocumentPosition",
     "ProductAnalytics",
     "CustomerAnalytics",
-    "SalesAnalytics"
+    "SalesAnalytics",
+    "Organization",
+    "Employee",
+    "Project",
+    "Contract",
+    "Currency",
+    "PriceType",
+    "Country",
+    "EmployeeProject"
 ]

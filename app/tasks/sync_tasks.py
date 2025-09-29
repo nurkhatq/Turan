@@ -10,7 +10,7 @@ import asyncio
 
 from app.core.celery_app import celery_app
 from app.core.database import get_db_context
-from app.services.integrations.moysklad.sync_service_complete import CompleteMoySkladSyncService
+from app.services.integrations.moysklad.sync_service import MoySkladSyncService
 from app.models.system import SyncJob
 from app.core.exceptions import IntegrationError
 from sqlalchemy import select
@@ -68,7 +68,7 @@ def moysklad_full_sync(self):
                 logger.info(f"🚀 Starting real full MoySklad synchronization (task: {task_id})")
                 
                 # Create sync service and perform real synchronization
-                sync_service = CompleteMoySkladSyncService(db)
+                sync_service = MoySkladSyncService(db)
                 results = await sync_service.full_sync()
                 
                 # Update job status with real results
@@ -168,7 +168,7 @@ def moysklad_incremental_sync(self):
                     return {"message": "Integration not enabled", "status": "skipped"}
                 
                 # Create sync service and perform real incremental synchronization
-                sync_service = CompleteMoySkladSyncService(db)
+                sync_service = MoySkladSyncService(db)
                 results = await sync_service.incremental_sync()
                 
                 # Update job status with real results

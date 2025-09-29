@@ -1,4 +1,6 @@
-# app/services/integrations/moysklad/client.py (FIXED VERSION)
+# app/services/integrations/moysklad/client.py
+"""Comprehensive MoySklad API client with all entity methods."""
+
 import httpx
 import json
 import logging
@@ -15,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 
 class MoySkladClient:
-    """Fixed MoySklad API client with correct endpoints and parameters."""
+    """Comprehensive MoySklad API client with all entity methods."""
     
     def __init__(
         self,
@@ -127,9 +129,15 @@ class MoySkladClient:
             response.raise_for_status()
             
             if response.content:
-                result = response.json()
-                logger.debug(f"Response received: {len(result.get('rows', []))} items")
-                return result
+                try:
+                    result = response.json()
+                    logger.info(f"Response received: {len(result.get('rows', []))} items")
+                    logger.info(f"Response type: {type(result)}")
+                    return result
+                except json.JSONDecodeError as e:
+                    logger.error(f"Failed to parse JSON response: {e}")
+                    logger.error(f"Response content: {response.text[:500]}")
+                    raise IntegrationError(f"Invalid JSON response from MoySklad API: {e}")
             return {}
             
         except httpx.HTTPStatusError as e:
@@ -233,7 +241,53 @@ class MoySkladClient:
         logger.info(f"Total loaded from {endpoint}: {len(all_items)} items")
         return all_items
     
-    # FIXED: Entity-specific methods with correct parameters
+    # Organization entities
+    async def get_organizations(self) -> List[Dict]:
+        """Get organizations."""
+        logger.info("🏢 Fetching organizations from MoySklad...")
+        return await self.get_paginated("entity/organization")
+    
+    async def get_employees(self, expand: Optional[str] = None) -> List[Dict]:
+        """Get employees."""
+        logger.info("👥 Fetching employees from MoySklad...")
+        params = {}
+        if expand:
+            params["expand"] = expand
+        return await self.get_paginated("entity/employee", params)
+    
+    async def get_projects(self) -> List[Dict]:
+        """Get projects."""
+        logger.info("📋 Fetching projects from MoySklad...")
+        return await self.get_paginated("entity/project")
+    
+    async def get_contracts(self, updated_since: Optional[datetime] = None) -> List[Dict]:
+        """Get contracts."""
+        logger.info("📄 Fetching contracts from MoySklad...")
+        params = {"expand": "agent,ownAgent,project"}
+        
+        if updated_since:
+            filter_date = updated_since.strftime("%Y-%m-%d %H:%M:%S")
+            params["filter"] = f"updated>={filter_date}"
+        
+        return await self.get_paginated("entity/contract", params)
+    
+    # Reference entities
+    async def get_currencies(self) -> List[Dict]:
+        """Get currencies."""
+        logger.info("💱 Fetching currencies from MoySklad...")
+        return await self.get_paginated("entity/currency")
+    
+    async def get_price_types(self) -> List[Dict]:
+        """Get price types."""
+        logger.info("💰 Fetching price types from MoySklad...")
+        return await self.get_paginated("entity/pricetype")
+    
+    async def get_countries(self) -> List[Dict]:
+        """Get countries."""
+        logger.info("🌍 Fetching countries from MoySklad...")
+        return await self.get_paginated("entity/country")
+    
+    # Product entities
     async def get_products(self, updated_since: Optional[datetime] = None) -> List[Dict]:
         """Get products from MoySklad with proper filtering and expand."""
         logger.info("🛍️ Fetching products from MoySklad...")
@@ -242,7 +296,6 @@ class MoySkladClient:
             "expand": "productFolder,uom,supplier,salePrices,buyPrice"  # Get related data
         }
         
-        # FIXED: Use correct filter syntax
         if updated_since:
             filter_date = updated_since.strftime("%Y-%m-%d %H:%M:%S")
             params["filter"] = f"updated>={filter_date}"
@@ -304,9 +357,243 @@ class MoySkladClient:
         if store_id:
             params["store.id"] = store_id
         
-        # FIXED: Use correct stock report endpoint
         return await self.get_paginated("report/stock/all", params)
     
+    # Document entities
+    async def get_customer_orders(self, updated_since: Optional[datetime] = None) -> List[Dict]:
+        """Get customer orders."""
+        logger.info("📦 Fetching customer orders from MoySklad...")
+        params = {"expand": "agent,organization,store,state,project,contract"}
+        
+        if updated_since:
+            filter_date = updated_since.strftime("%Y-%m-%d %H:%M:%S")
+            params["filter"] = f"updated>={filter_date}"
+        
+        return await self.get_paginated("entity/customerorder", params)
+    
+    async def get_demands(self, updated_since: Optional[datetime] = None) -> List[Dict]:
+        """Get shipments (demands)."""
+        logger.info("🚚 Fetching shipments from MoySklad...")
+        params = {"expand": "agent,organization,store,state,project,contract"}
+        
+        if updated_since:
+            filter_date = updated_since.strftime("%Y-%m-%d %H:%M:%S")
+            params["filter"] = f"updated>={filter_date}"
+        
+        return await self.get_paginated("entity/demand", params)
+    
+    async def get_invoices_out(self, updated_since: Optional[datetime] = None) -> List[Dict]:
+        """Get sales invoices."""
+        logger.info("📄 Fetching sales invoices from MoySklad...")
+        params = {"expand": "agent,organization,state,project,contract"}
+        
+        if updated_since:
+            filter_date = updated_since.strftime("%Y-%m-%d %H:%M:%S")
+            params["filter"] = f"updated>={filter_date}"
+        
+        return await self.get_paginated("entity/invoiceout", params)
+    
+    async def get_sales_returns(self, updated_since: Optional[datetime] = None) -> List[Dict]:
+        """Get sales returns."""
+        logger.info("↩️ Fetching sales returns from MoySklad...")
+        params = {"expand": "agent,organization,store,state"}
+        
+        if updated_since:
+            filter_date = updated_since.strftime("%Y-%m-%d %H:%M:%S")
+            params["filter"] = f"updated>={filter_date}"
+        
+        return await self.get_paginated("entity/salesreturn", params)
+    
+    async def get_purchase_orders(self, updated_since: Optional[datetime] = None) -> List[Dict]:
+        """Get purchase orders."""
+        logger.info("📋 Fetching purchase orders from MoySklad...")
+        params = {"expand": "agent,organization,store,state,project,contract"}
+        
+        if updated_since:
+            filter_date = updated_since.strftime("%Y-%m-%d %H:%M:%S")
+            params["filter"] = f"updated>={filter_date}"
+        
+        return await self.get_paginated("entity/purchaseorder", params)
+    
+    async def get_supplies(self, updated_since: Optional[datetime] = None) -> List[Dict]:
+        """Get supplies (receipts)."""
+        logger.info("📥 Fetching supplies from MoySklad...")
+        params = {"expand": "agent,organization,store,state,project,contract"}
+        
+        if updated_since:
+            filter_date = updated_since.strftime("%Y-%m-%d %H:%M:%S")
+            params["filter"] = f"updated>={filter_date}"
+        
+        return await self.get_paginated("entity/supply", params)
+    
+    async def get_invoices_in(self, updated_since: Optional[datetime] = None) -> List[Dict]:
+        """Get purchase invoices."""
+        logger.info("📄 Fetching purchase invoices from MoySklad...")
+        params = {"expand": "agent,organization,state,project,contract"}
+        
+        if updated_since:
+            filter_date = updated_since.strftime("%Y-%m-%d %H:%M:%S")
+            params["filter"] = f"updated>={filter_date}"
+        
+        return await self.get_paginated("entity/invoicein", params)
+    
+    async def get_purchase_returns(self, updated_since: Optional[datetime] = None) -> List[Dict]:
+        """Get purchase returns."""
+        logger.info("↩️ Fetching purchase returns from MoySklad...")
+        params = {"expand": "agent,organization,store,state"}
+        
+        if updated_since:
+            filter_date = updated_since.strftime("%Y-%m-%d %H:%M:%S")
+            params["filter"] = f"updated>={filter_date}"
+        
+        return await self.get_paginated("entity/purchasereturn", params)
+    
+    # Stock movement documents
+    async def get_enters(self, updated_since: Optional[datetime] = None) -> List[Dict]:
+        """Get stock receipts (enter documents)."""
+        logger.info("📊 Fetching stock receipts from MoySklad...")
+        params = {"expand": "store"}
+        
+        if updated_since:
+            filter_date = updated_since.strftime("%Y-%m-%d %H:%M:%S")
+            params["filter"] = f"updated>={filter_date}"
+        
+        return await self.get_paginated("entity/enter", params)
+    
+    async def get_losses(self, updated_since: Optional[datetime] = None) -> List[Dict]:
+        """Get stock write-offs (loss documents)."""
+        logger.info("📊 Fetching stock write-offs from MoySklad...")
+        params = {"expand": "store"}
+        
+        if updated_since:
+            filter_date = updated_since.strftime("%Y-%m-%d %H:%M:%S")
+            params["filter"] = f"updated>={filter_date}"
+        
+        return await self.get_paginated("entity/loss", params)
+    
+    async def get_moves(self, updated_since: Optional[datetime] = None) -> List[Dict]:
+        """Get stock movements between stores."""
+        logger.info("📊 Fetching stock movements from MoySklad...")
+        params = {"expand": "sourceStore,targetStore"}
+        
+        if updated_since:
+            filter_date = updated_since.strftime("%Y-%m-%d %H:%M:%S")
+            params["filter"] = f"updated>={filter_date}"
+        
+        return await self.get_paginated("entity/move", params)
+    
+    async def get_inventories(self, updated_since: Optional[datetime] = None) -> List[Dict]:
+        """Get inventory adjustments."""
+        logger.info("📊 Fetching inventory adjustments from MoySklad...")
+        params = {"expand": "store"}
+        
+        if updated_since:
+            filter_date = updated_since.strftime("%Y-%m-%d %H:%M:%S")
+            params["filter"] = f"updated>={filter_date}"
+        
+        return await self.get_paginated("entity/inventory", params)
+    
+    # Report methods
+    async def get_profit_by_product(self, 
+                                   date_from: datetime, 
+                                   date_to: datetime) -> List[Dict]:
+        """Get profit report by products."""
+        logger.info("📈 Fetching profit by product report...")
+        
+        params = {
+            "momentFrom": date_from.strftime("%Y-%m-%d %H:%M:%S"),
+            "momentTo": date_to.strftime("%Y-%m-%d %H:%M:%S")
+        }
+        
+        return await self.get_paginated("report/profit/byproduct", params)
+    
+    async def get_profit_by_counterparty(self,
+                                        date_from: datetime,
+                                        date_to: datetime) -> List[Dict]:
+        """Get profit report by counterparties."""
+        logger.info("📈 Fetching profit by counterparty report...")
+        
+        params = {
+            "momentFrom": date_from.strftime("%Y-%m-%d %H:%M:%S"),
+            "momentTo": date_to.strftime("%Y-%m-%d %H:%M:%S")
+        }
+        
+        return await self.get_paginated("report/profit/bycounterparty", params)
+    
+    async def get_sales_dashboard(self) -> Dict[str, Any]:
+        """Get sales dashboard metrics."""
+        logger.info("📊 Fetching sales dashboard...")
+        return await self.get("report/dashboard/sales")
+    
+    async def get_orders_dashboard(self) -> Dict[str, Any]:
+        """Get orders dashboard metrics."""
+        logger.info("📊 Fetching orders dashboard...")
+        return await self.get("report/dashboard/orders")
+    
+    async def get_money_dashboard(self) -> Dict[str, Any]:
+        """Get money flow dashboard."""
+        logger.info("💰 Fetching money dashboard...")
+        return await self.get("report/dashboard/money")
+    
+    async def get_turnover_report(self,
+                                 date_from: Optional[datetime] = None,
+                                 date_to: Optional[datetime] = None) -> List[Dict]:
+        """Get product turnover report."""
+        logger.info("🔄 Fetching turnover report...")
+        
+        params = {}
+        if date_from:
+            params["momentFrom"] = date_from.strftime("%Y-%m-%d %H:%M:%S")
+        if date_to:
+            params["momentTo"] = date_to.strftime("%Y-%m-%d %H:%M:%S")
+        
+        return await self.get_paginated("report/turnover/all", params)
+    
+    # Utility methods for batch operations
+    async def create_entity(self, entity_type: str, data: Dict) -> Dict:
+        """Create new entity in MoySklad."""
+        logger.info(f"➕ Creating {entity_type}...")
+        return await self.post(f"entity/{entity_type}", data)
+    
+    async def update_entity(self, entity_type: str, entity_id: str, data: Dict) -> Dict:
+        """Update existing entity in MoySklad."""
+        logger.info(f"✏️ Updating {entity_type}/{entity_id}...")
+        return await self.put(f"entity/{entity_type}/{entity_id}", data)
+    
+    async def delete_entity(self, entity_type: str, entity_id: str) -> Dict:
+        """Delete entity from MoySklad."""
+        logger.info(f"🗑️ Deleting {entity_type}/{entity_id}...")
+        return await self.delete(f"entity/{entity_type}/{entity_id}")
+    
+    async def batch_create(self, entity_type: str, data_list: List[Dict]) -> List[Dict]:
+        """Batch create multiple entities."""
+        logger.info(f"➕➕ Batch creating {len(data_list)} {entity_type} entities...")
+        return await self.post(f"entity/{entity_type}", data_list)
+    
+    async def batch_update(self, entity_type: str, data_list: List[Dict]) -> List[Dict]:
+        """Batch update multiple entities."""
+        logger.info(f"✏️✏️ Batch updating {len(data_list)} {entity_type} entities...")
+        
+        # MoySklad requires POST with special header for batch update
+        self.headers["X-Lognex-Format-Millisecond"] = "true"
+        result = await self.post(f"entity/{entity_type}", data_list)
+        del self.headers["X-Lognex-Format-Millisecond"]
+        
+        return result
+    
+    async def batch_delete(self, entity_type: str, entity_ids: List[str]) -> Dict:
+        """Batch delete multiple entities."""
+        logger.info(f"🗑️🗑️ Batch deleting {len(entity_ids)} {entity_type} entities...")
+        
+        # Build delete request body
+        delete_data = [
+            {"meta": {"href": f"{self.base_url}/entity/{entity_type}/{entity_id}"}}
+            for entity_id in entity_ids
+        ]
+        
+        return await self.post(f"entity/{entity_type}/delete", delete_data)
+    
+    # Legacy methods for backward compatibility
     async def get_sales_documents(
         self,
         document_type: str,
@@ -330,7 +617,6 @@ class MoySkladClient:
         logger.info(f"📋 Fetching positions for {document_type}/{document_id}")
         return await self.get_paginated(f"entity/{document_type}/{document_id}/positions")
     
-    # FIXED: Add missing methods from documentation
     async def get_assortment(self, updated_since: Optional[datetime] = None) -> List[Dict]:
         """Get complete assortment (products + services + variants)."""
         logger.info("📚 Fetching complete assortment from MoySklad...")
@@ -344,15 +630,3 @@ class MoySkladClient:
             params["filter"] = f"updated>={filter_date}"
         
         return await self.get_paginated("entity/assortment", params)
-    
-    async def get_customer_orders(self, updated_since: Optional[datetime] = None) -> List[Dict]:
-        """Get customer orders."""
-        return await self.get_sales_documents("customerorder", updated_since)
-    
-    async def get_demands(self, updated_since: Optional[datetime] = None) -> List[Dict]:
-        """Get shipments (demands).""" 
-        return await self.get_sales_documents("demand", updated_since)
-    
-    async def get_supplies(self, updated_since: Optional[datetime] = None) -> List[Dict]:
-        """Get supplies."""
-        return await self.get_sales_documents("supply", updated_since)

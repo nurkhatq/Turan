@@ -220,10 +220,16 @@ class MoySkladSyncService:
                 # Extract chief accountant ID
                 chief_accountant_id = None
                 if "chiefAccountant" in org_data:
-                    chief_meta = org_data["chiefAccountant"].get("meta", {})
-                    chief_href = chief_meta.get("href", "")
-                    if chief_href:
-                        chief_accountant_id = chief_href.split("/")[-1]
+                    chief_accountant = org_data["chiefAccountant"]
+                    # Check if it's a dict (object) or string (direct reference)
+                    if isinstance(chief_accountant, dict):
+                        chief_meta = chief_accountant.get("meta", {})
+                        chief_href = chief_meta.get("href", "")
+                        if chief_href:
+                            chief_accountant_id = chief_href.split("/")[-1]
+                    elif isinstance(chief_accountant, str):
+                        # If it's a string, it might be the ID directly
+                        chief_accountant_id = chief_accountant
                 
                 stmt = insert(Organization).values(
                     external_id=org_id,

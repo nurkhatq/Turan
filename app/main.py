@@ -171,8 +171,9 @@ async def health_check():
     # Test database
     try:
         from app.core.database import engine
+        from sqlalchemy import text
         async with engine.begin() as conn:
-            await conn.execute("SELECT 1")
+            await conn.execute(text("SELECT 1"))
         health_status["components"]["database"] = "healthy"
     except Exception as e:
         logger.error(f"Database health check failed: {e}")

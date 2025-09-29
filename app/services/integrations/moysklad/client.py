@@ -1,3 +1,4 @@
+# app/services/integrations/moysklad/client.py (FIXED VERSION)
 import httpx
 import json
 import logging
@@ -14,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 
 class MoySkladClient:
-    """MoySklad API client with token-only authentication support."""
+    """Fixed MoySklad API client with correct endpoints and parameters."""
     
     def __init__(
         self,
@@ -114,7 +115,7 @@ class MoySkladClient:
         url = f"{self.base_url}/{endpoint.lstrip('/')}"
         
         try:
-            logger.debug(f"Making {method} request to {url}")
+            logger.debug(f"Making {method} request to {url} with params: {params}")
             
             response = await self.client.request(
                 method=method,
@@ -126,7 +127,9 @@ class MoySkladClient:
             response.raise_for_status()
             
             if response.content:
-                return response.json()
+                result = response.json()
+                logger.debug(f"Response received: {len(result.get('rows', []))} items")
+                return result
             return {}
             
         except httpx.HTTPStatusError as e:
@@ -187,49 +190,88 @@ class MoySkladClient:
         params: Optional[Dict] = None,
         limit: int = 1000
     ) -> List[Dict[str, Any]]:
-        """Get all items from paginated endpoint."""
+        """Get all items from paginated endpoint with proper limit handling."""
         all_items = []
         offset = 0
         
         if params is None:
             params = {}
         
+        # Use smaller limit for expand queries
+        if 'expand' in params:
+            limit = min(limit, 100)  # MoySklad limit for expand queries
+        
         params["limit"] = limit
         
         while True:
             params["offset"] = offset
             
-            response = await self.get(endpoint, params)
-            rows = response.get("rows", [])
-            
-            if not rows:
-                break
-            
-            all_items.extend(rows)
-            offset += len(rows)
-            
-            # Check if we got all items
-            if len(rows) < limit:
+            try:
+                response = await self.get(endpoint, params)
+                rows = response.get("rows", [])
+                
+                if not rows:
+                    break
+                
+                all_items.extend(rows)
+                offset += len(rows)
+                
+                logger.debug(f"Loaded {len(all_items)} items from {endpoint}")
+                
+                # Check if we got all items
+                if len(rows) < limit:
+                    break
+                    
+                # Small delay to respect rate limits
+                import asyncio
+                await asyncio.sleep(0.05)
+                
+            except Exception as e:
+                logger.error(f"Error in pagination at offset {offset}: {e}")
                 break
         
+        logger.info(f"Total loaded from {endpoint}: {len(all_items)} items")
         return all_items
     
-    # Entity-specific methods (same as before)
+    # FIXED: Entity-specific methods with correct parameters
     async def get_products(self, updated_since: Optional[datetime] = None) -> List[Dict]:
-        """Get products from MoySklad."""
-        params = {}
+        """Get products from MoySklad with proper filtering and expand."""
+        logger.info("🛍️ Fetching products from MoySklad...")
+        
+        params = {
+            "expand": "productFolder,uom,supplier,salePrices,buyPrice"  # Get related data
+        }
+        
+        # FIXED: Use correct filter syntax
         if updated_since:
-            params["updatedBy"] = updated_since.isoformat()
+            filter_date = updated_since.strftime("%Y-%m-%d %H:%M:%S")
+            params["filter"] = f"updated>={filter_date}"
         
         return await self.get_paginated("entity/product", params)
     
     async def get_services(self, updated_since: Optional[datetime] = None) -> List[Dict]:
         """Get services from MoySklad."""
-        params = {}
+        logger.info("🔧 Fetching services from MoySklad...")
+        
+        params = {
+            "expand": "productFolder,uom,salePrices,buyPrice"
+        }
+        
         if updated_since:
-            params["updatedBy"] = updated_since.isoformat()
+            filter_date = updated_since.strftime("%Y-%m-%d %H:%M:%S")
+            params["filter"] = f"updated>={filter_date}"
         
         return await self.get_paginated("entity/service", params)
+    
+    async def get_product_folders(self) -> List[Dict]:
+        """Get product folders/categories."""
+        logger.info("📁 Fetching product folders from MoySklad...")
+        return await self.get_paginated("entity/productfolder")
+    
+    async def get_units_of_measure(self) -> List[Dict]:
+        """Get units of measure."""
+        logger.info("📏 Fetching units of measure from MoySklad...")
+        return await self.get_paginated("entity/uom")
     
     async def get_variants(self, product_id: str) -> List[Dict]:
         """Get product variants."""
@@ -237,22 +279,32 @@ class MoySkladClient:
     
     async def get_counterparties(self, updated_since: Optional[datetime] = None) -> List[Dict]:
         """Get counterparties from MoySklad."""
-        params = {}
+        logger.info("🤝 Fetching counterparties from MoySklad...")
+        
+        params = {
+            "expand": "contactpersons"  # Get contact persons
+        }
+        
         if updated_since:
-            params["updatedBy"] = updated_since.isoformat()
+            filter_date = updated_since.strftime("%Y-%m-%d %H:%M:%S")
+            params["filter"] = f"updated>={filter_date}"
         
         return await self.get_paginated("entity/counterparty", params)
     
     async def get_stores(self) -> List[Dict]:
         """Get stores/warehouses from MoySklad."""
+        logger.info("🏪 Fetching stores from MoySklad...")
         return await self.get_paginated("entity/store")
     
     async def get_stock(self, store_id: Optional[str] = None) -> List[Dict]:
-        """Get stock levels from MoySklad."""
+        """Get stock levels from MoySklad using the correct report endpoint."""
+        logger.info("📦 Fetching stock levels from MoySklad...")
+        
         params = {}
         if store_id:
-            params["store"] = store_id
+            params["store.id"] = store_id
         
+        # FIXED: Use correct stock report endpoint
         return await self.get_paginated("report/stock/all", params)
     
     async def get_sales_documents(
@@ -261,12 +313,46 @@ class MoySkladClient:
         updated_since: Optional[datetime] = None
     ) -> List[Dict]:
         """Get sales documents from MoySklad."""
-        params = {}
+        logger.info(f"📄 Fetching {document_type} documents from MoySklad...")
+        
+        params = {
+            "expand": "agent,organization,store,state"
+        }
+        
         if updated_since:
-            params["updatedBy"] = updated_since.isoformat()
+            filter_date = updated_since.strftime("%Y-%m-%d %H:%M:%S")
+            params["filter"] = f"updated>={filter_date}"
         
         return await self.get_paginated(f"entity/{document_type}", params)
     
     async def get_document_positions(self, document_type: str, document_id: str) -> List[Dict]:
         """Get document positions."""
+        logger.info(f"📋 Fetching positions for {document_type}/{document_id}")
         return await self.get_paginated(f"entity/{document_type}/{document_id}/positions")
+    
+    # FIXED: Add missing methods from documentation
+    async def get_assortment(self, updated_since: Optional[datetime] = None) -> List[Dict]:
+        """Get complete assortment (products + services + variants)."""
+        logger.info("📚 Fetching complete assortment from MoySklad...")
+        
+        params = {
+            "expand": "productFolder,uom,supplier,salePrices,buyPrice"
+        }
+        
+        if updated_since:
+            filter_date = updated_since.strftime("%Y-%m-%d %H:%M:%S")
+            params["filter"] = f"updated>={filter_date}"
+        
+        return await self.get_paginated("entity/assortment", params)
+    
+    async def get_customer_orders(self, updated_since: Optional[datetime] = None) -> List[Dict]:
+        """Get customer orders."""
+        return await self.get_sales_documents("customerorder", updated_since)
+    
+    async def get_demands(self, updated_since: Optional[datetime] = None) -> List[Dict]:
+        """Get shipments (demands).""" 
+        return await self.get_sales_documents("demand", updated_since)
+    
+    async def get_supplies(self, updated_since: Optional[datetime] = None) -> List[Dict]:
+        """Get supplies."""
+        return await self.get_sales_documents("supply", updated_since)

@@ -11,7 +11,9 @@ class ProductFolderResponse(BaseModel):
     name: str
     code: Optional[str]
     description: Optional[str]
-    parent_id: Optional[int]
+    path_name: Optional[str]
+    archived: bool
+    parent_external_id: Optional[str]
     external_id: Optional[str]
     
     class Config:

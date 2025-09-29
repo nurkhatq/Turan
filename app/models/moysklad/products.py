@@ -1,4 +1,4 @@
-# app/models/moysklad/products.py
+# app/models/moysklad/products.py (FIXED VERSION)
 from sqlalchemy import Column, String, Integer, Numeric, Boolean, Text, ForeignKey
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import UUID
@@ -14,11 +14,13 @@ class ProductFolder(BaseModel, ExternalIdMixin):
     name = Column(String(255), nullable=False)
     code = Column(String(255), nullable=True)
     description = Column(Text, nullable=True)
-    parent_id = Column(Integer, ForeignKey("product_folder.id"), nullable=True)
+    path_name = Column(String(500), nullable=True)  # Full path name from MoySklad
+    archived = Column(Boolean, default=False, nullable=False)
+    
+    # Parent-child relationship using external IDs
+    parent_external_id = Column(String(255), nullable=True, index=True)
     
     # Relationships
-    parent = relationship("ProductFolder", remote_side="ProductFolder.id")
-    children = relationship("ProductFolder", back_populates="parent")
     products = relationship("Product", back_populates="folder")
 
 
@@ -32,7 +34,7 @@ class UnitOfMeasure(BaseModel, ExternalIdMixin):
 
 
 class Product(BaseModel, ExternalIdMixin):
-    """Product from MoySklad."""
+    """Product from MoySklad with fixed external ID relationships."""
     __tablename__ = "product"
     
     name = Column(String(500), nullable=False, index=True)
@@ -53,7 +55,12 @@ class Product(BaseModel, ExternalIdMixin):
     archived = Column(Boolean, default=False, nullable=False)
     shared = Column(Boolean, default=True, nullable=False)
     
-    # Foreign keys
+    # FIXED: Use external IDs instead of integer foreign keys
+    folder_external_id = Column(String(255), nullable=True, index=True)
+    unit_external_id = Column(String(255), nullable=True, index=True)
+    supplier_external_id = Column(String(255), nullable=True, index=True)
+    
+    # FIXED: Use integer foreign keys for actual relationships (will be populated after sync)
     folder_id = Column(Integer, ForeignKey("product_folder.id"), nullable=True)
     unit_id = Column(Integer, ForeignKey("unit_of_measure.id"), nullable=True)
     
@@ -78,8 +85,11 @@ class ProductVariant(BaseModel, ExternalIdMixin):
     # Characteristics (stored as JSON)
     characteristics = Column(Text, nullable=True)  # JSON with variant characteristics
     
+    # FIXED: Use external ID for product relationship
+    product_external_id = Column(String(255), nullable=False, index=True)
+    
     # Foreign keys
-    product_id = Column(Integer, ForeignKey("product.id"), nullable=False)
+    product_id = Column(Integer, ForeignKey("product.id"), nullable=True)
     
     # Relationships
     product = relationship("Product", back_populates="variants")
@@ -103,11 +113,14 @@ class Service(BaseModel, ExternalIdMixin):
     archived = Column(Boolean, default=False, nullable=False)
     shared = Column(Boolean, default=True, nullable=False)
     
-    # Foreign keys
+    # FIXED: Use external IDs
+    folder_external_id = Column(String(255), nullable=True, index=True)
+    unit_external_id = Column(String(255), nullable=True, index=True)
+    
+    # Foreign keys for relationships
     folder_id = Column(Integer, ForeignKey("product_folder.id"), nullable=True)
     unit_id = Column(Integer, ForeignKey("unit_of_measure.id"), nullable=True)
     
     # Relationships
     folder = relationship("ProductFolder")
     unit = relationship("UnitOfMeasure")
-

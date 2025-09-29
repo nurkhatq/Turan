@@ -155,10 +155,25 @@ class SalesReport(BaseModel):
     growth_analysis: Dict[str, Any]
 
 
+class InventoryProductResponse(BaseModel):
+    """Simple inventory product response schema."""
+    id: int
+    name: str
+    code: Optional[str]
+    sale_price: Optional[Decimal]
+    total_stock: Decimal
+    total_stock_qty: Decimal
+    stock_value: Decimal
+    status: str
+    
+    class Config:
+        from_attributes = True
+
+
 class InventoryReport(BaseModel):
     """Inventory report schema."""
     generated_at: datetime
     summary: InventoryAnalytics
-    products_analysis: List[ProductAnalyticsResponse]
+    products_analysis: List[InventoryProductResponse]
     stock_movements: List[Dict[str, Any]]
     forecasting: Dict[str, Any]

@@ -1,4 +1,4 @@
-# app/models/moysklad/inventory.py
+# app/models/moysklad/inventory.py (FIXED VERSION)
 from sqlalchemy import Boolean, Column, String, Integer, Numeric, ForeignKey, DateTime
 from sqlalchemy.orm import relationship
 
@@ -22,7 +22,7 @@ class Store(BaseModel, ExternalIdMixin):
 
 
 class Stock(BaseModel, ExternalIdMixin):
-    """Stock levels from MoySklad."""
+    """Stock levels from MoySklad with fixed external ID relationships."""
     __tablename__ = "stock"
     
     # Quantities
@@ -31,13 +31,21 @@ class Stock(BaseModel, ExternalIdMixin):
     reserve = Column(Numeric(15, 3), default=0, nullable=False)  # Reserved
     available = Column(Numeric(15, 3), default=0, nullable=False)  # Available
     
-    # Foreign keys
+    # Pricing from stock report
+    price = Column(Numeric(15, 2), nullable=True)  # Current price
+    sale_price = Column(Numeric(15, 2), nullable=True)  # Sale price
+    
+    # FIXED: Use external IDs for relationships
+    product_external_id = Column(String(255), nullable=True, index=True)
+    variant_external_id = Column(String(255), nullable=True, index=True)
+    store_external_id = Column(String(255), nullable=True, index=True)  # Made nullable
+    
+    # Foreign keys for actual relationships (populated after sync)
     product_id = Column(Integer, ForeignKey("product.id"), nullable=True)
     variant_id = Column(Integer, ForeignKey("product_variant.id"), nullable=True)
-    store_id = Column(Integer, ForeignKey("store.id"), nullable=False)
+    store_id = Column(Integer, ForeignKey("store.id"), nullable=True)
     
     # Relationships
     product = relationship("Product", back_populates="stock_items")
     variant = relationship("ProductVariant", back_populates="stock_items")
     store = relationship("Store", back_populates="stock_items")
-

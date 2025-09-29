@@ -277,3 +277,100 @@ class AnalyticsService:
             reorder_recommendations=[],
             slow_moving_products=[]
         )
+    
+    async def _get_inventory_product_analysis(self) -> List[Dict[str, Any]]:
+        """Get product analysis for inventory report."""
+        from app.schemas.analytics import InventoryProductResponse
+        
+        # Get products with their stock information
+        stmt = select(
+            Product.id,
+            Product.name,
+            Product.code,
+            Product.sale_price,
+            func.coalesce(func.sum(Stock.available), 0).label('total_stock'),
+            func.coalesce(func.sum(Stock.stock), 0).label('total_stock_qty')
+        ).outerjoin(Stock, Product.id == Stock.product_id).where(
+            and_(
+                Product.is_deleted == False,
+                Product.archived == False
+            )
+        ).group_by(Product.id, Product.name, Product.code, Product.sale_price)
+        
+        result = await self.db.execute(stmt)
+        
+        products_analysis = []
+        for row in result:
+            sale_price = Decimal(str(row.sale_price)) if row.sale_price else Decimal('0')
+            total_stock = Decimal(str(row.total_stock))
+            total_stock_qty = Decimal(str(row.total_stock_qty))
+            stock_value = sale_price * total_stock_qty
+            
+            products_analysis.append(InventoryProductResponse(
+                id=row.id,
+                name=row.name,
+                code=row.code,
+                sale_price=sale_price,
+                total_stock=total_stock,
+                total_stock_qty=total_stock_qty,
+                stock_value=stock_value,
+                status="in_stock" if row.total_stock > 0 else "out_of_stock"
+            ))
+        
+        return products_analysis
+    
+    async def _get_inventory_forecasting(self) -> Dict[str, Any]:
+        """Get inventory forecasting data."""
+        # Simplified forecasting - would need historical data for proper forecasting
+        return {
+            "method": "simplified",
+            "forecast_period": "30_days",
+            "recommendations": [
+                "Implement proper demand forecasting based on historical sales",
+                "Set up automated reorder points",
+                "Monitor seasonal trends"
+            ],
+            "next_review_date": (datetime.utcnow() + timedelta(days=30)).isoformat()
+        }
+    
+    async def _get_sales_analytics_for_period(self, period: AnalyticsPeriod) -> SalesAnalytics:
+        """Get sales analytics for a specific period."""
+        # This would typically query the SalesAnalytics table or calculate on the fly
+        return SalesAnalytics(
+            id=0,
+            period_start=datetime.combine(period.start_date, datetime.min.time()),
+            period_end=datetime.combine(period.end_date, datetime.max.time()),
+            period_type=period.period_type.value,
+            total_revenue=await self._get_revenue_for_period(period.start_date, period.end_date),
+            total_profit=Decimal('0'),  # Would need cost data
+            total_orders=await self._get_orders_count_for_period(period.start_date, period.end_date),
+            avg_order_value=Decimal('0'),  # Would calculate from orders
+            revenue_growth_percent=Decimal('0'),
+            order_growth_percent=Decimal('0'),
+            metrics_data={}
+        )
+    
+    async def _get_product_analytics_for_period(self, period: AnalyticsPeriod) -> List[Dict[str, Any]]:
+        """Get product analytics for a specific period."""
+        # Simplified - would need proper sales data analysis
+        return []
+    
+    async def _get_customer_analytics_for_period(self, period: AnalyticsPeriod) -> List[Dict[str, Any]]:
+        """Get customer analytics for a specific period."""
+        # Simplified - would need proper customer analysis
+        return []
+    
+    async def _get_daily_sales_trends(self, period: AnalyticsPeriod) -> List[Dict[str, Any]]:
+        """Get daily sales trends for the period."""
+        # Simplified - would need proper trend analysis
+        return []
+    
+    async def _get_growth_analysis(self, period: AnalyticsPeriod) -> Dict[str, Any]:
+        """Get growth analysis for the period."""
+        # Simplified - would need comparison with previous period
+        return {
+            "revenue_growth": 0,
+            "orders_growth": 0,
+            "customers_growth": 0,
+            "analysis": "Growth analysis requires historical data comparison"
+        }

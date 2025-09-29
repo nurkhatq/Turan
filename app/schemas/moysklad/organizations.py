@@ -1,8 +1,9 @@
 # app/schemas/moysklad/organizations.py
 from typing import Optional, List, Dict, Any
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, validator
 from decimal import Decimal
 from datetime import datetime
+import json
 
 
 class OrganizationResponse(BaseModel):
@@ -26,6 +27,18 @@ class OrganizationResponse(BaseModel):
     shared: bool
     external_id: Optional[str]
     last_sync_at: Optional[datetime]
+    
+    @validator('bank_accounts', pre=True)
+    def parse_bank_accounts(cls, v):
+        """Parse bank_accounts from JSON string to dictionary."""
+        if v is None:
+            return None
+        if isinstance(v, str):
+            try:
+                return json.loads(v)
+            except (json.JSONDecodeError, TypeError):
+                return None
+        return v
     
     class Config:
         from_attributes = True
